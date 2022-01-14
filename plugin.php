@@ -8,7 +8,7 @@ class Shouts extends Plugin {
  
 var $id = "Shouts";
 var $name = "Shouts";
-var $version = "1.0";
+var $version = "1.1";
 var $description = "Allows members to leave short comments on other member profiles";
 var $author = "eso";
 
@@ -160,7 +160,7 @@ function htmlShout($shout)
  
 	// Generate the shout wrapper, avatar, name, and time.
 	$output = "<div class='p c{$shout["color"]}'><div class='hdr'>
-<img src='" . $this->eso->getAvatar($shout["memberFrom"], $shout["avatarFormat"], "thumb") . "' alt='' class='avatar thumb'/>
+<img src='" . $this->eso->getAvatar($shout["memberFrom"], $shout["avatarFormat"], "thumb") . "' alt='' class='avatar'/>
 <div class='pInfo'><h4><a href='" . makeLink("profile", $shout["memberFrom"]) . "'>{$shout["name"]}</a></h4><br/><span>" . relativeTime($shout["time"]) . "</span></div>";
  
 	// If the user can delete this shout, show the delete link.

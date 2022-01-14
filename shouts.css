@@ -5,19 +5,19 @@
 .shouts .pInfo {margin-left:10px; margin-right:20px}
 .shouts .pInfo span {margin-left:0}
 .shouts .p, .shouts .p .hdr {margin-bottom:4px; border:0}
-.shouts .p .hdr {padding:4px 8px 3px 4px}
+.shouts .p .hdr {height:auto; white-space:normal; padding:4px 8px 3px 4px}
 .shouts .p .hdr p a {text-decoration:underline}
 .shouts .avatar {width:32px; height:32px; float:left}
-.shouts p {margin:2px 0 0 0; margin-left:17em}
+.shouts p {margin:2px 0 0 0; margin-left:17em; word-break:break-word}
 #shouts:empty {margin-top:-6px}
 #shhdr {margin-top:5px}
 .body.shouts #more .msg {margin-top:0; margin-bottom:4px}
 
 /* Mobile support */
-@media only screen and (max-width: 570px) {
+@media only screen and (max-width:570px) {
 .shouts p {margin-left:0}
 }
 
-@media only screen and (max-width: 450px) {
+@media only screen and (max-width:450px) {
 #shouts .p .hdr .controls {float:right; clear:unset; margin:-1px 0 -3px 0; padding:0; background:unset; box-shadow:unset}
 }
