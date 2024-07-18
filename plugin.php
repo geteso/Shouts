@@ -8,7 +8,7 @@ class Shouts extends Plugin {
  
 var $id = "Shouts";
 var $name = "Shouts";
-var $version = "1.1";
+var $version = "1.2";
 var $description = "Allows members to leave short comments on other member profiles";
 var $author = "eso";
 
