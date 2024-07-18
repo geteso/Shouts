@@ -9,6 +9,16 @@ var Shouts = {
         getById("shoutContent").onkeyup = function onkeydown() {
             window[this.value && !this.placeholder ? "enable" : "disable"](getById("shoutSubmit"));
         };
+        getById("shoutContent").onkeypress = function onkeypress(e) {
+            if (!e) e = window.event;
+            if (e.ctrlKey && e.keyCode == 13) {
+                if (!getById("shoutSubmit").classList.contains("buttonDisabled")) {
+                    Shouts.addShout(getById("shoutContent").value);
+                }
+                return false;
+            }
+        }
+        window.onbeforeunload = Shouts.beforeUnload;
     },
 
     addShout: function(content) {
@@ -64,6 +74,10 @@ var Shouts = {
                 }, {begin: shout.offsetHeight, end: 0})).start();
             }
         }, {begin: 1, end: 0})).start();
+    },
+
+    beforeUnload: function onbeforeunload() {
+        if (!getById("shoutSubmit").classList.contains("buttonDisabled")) return eso.language["confirmDiscard"];
     }
 
 };

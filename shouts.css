@@ -2,7 +2,7 @@
 .shouts form .text {width:calc(100% - 70px); height:16px; margin:0; border-right:0; border-top-right-radius:0; border-bottom-right-radius:0}
 .shouts form span.button {position:absolute; height:20px; border-top-left-radius:0; border-bottom-left-radius:0}
 .shouts form span.button input {width:unset; height:20px}
-.shouts .pInfo {margin-left:10px; margin-right:20px}
+.shouts .pInfo {margin-left:10px; margin-right:20px; display:inline-block}
 .shouts .pInfo span {margin-left:0}
 .shouts .p, .shouts .p .hdr {margin-bottom:4px; border:0}
 .shouts .p .hdr {height:auto; white-space:normal; padding:4px 8px 3px 4px}

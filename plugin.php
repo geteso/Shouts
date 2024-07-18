@@ -27,7 +27,8 @@ function init()
 	$this->eso->addLanguage("emailOnNewShout", "Email me when someone adds a shout to my profile");
 	$this->eso->addLanguage(array("emails", "newShout", "subject"), "%s, someone shouted on your profile");
 	$this->eso->addLanguage(array("emails", "newShout", "body"), "%s, %s has added a shout to your profile!\n\nTo view the new activity, check out the following link:\n%s");
- 
+	$this->eso->addLanguageToJS("confirmDiscard");
+
 	// If we're on the profile view, initiate all the shout stuff.
 	if ($this->eso->action == "profile") {
 		$this->eso->controller->addHook("init", array($this, "addShoutsSection"));
