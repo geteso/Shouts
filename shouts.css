@@ -9,7 +9,9 @@
 .shouts .p .hdr p a {text-decoration:underline}
 .shouts .avatar {width:32px; height:32px; float:left}
 .shouts p {margin:2px 0 0 0; margin-left:17em; word-break:break-word}
-#shouts:empty {margin-top:-6px}
+.body.shouts > form, .body.shouts > .msg {margin-bottom:0}
+#shouts {margin-top:10px}
+#shouts:empty {display:none}
 #shhdr {margin-top:5px}
 .body.shouts #more .msg {margin-top:0; margin-bottom:4px}
 

@@ -8,7 +8,7 @@ class Shouts extends Plugin {
  
 var $id = "Shouts";
 var $name = "Shouts";
-var $version = "1.2";
+var $version = "1.3";
 var $description = "Allows members to leave short comments on other member profiles";
 var $author = "eso";
 
@@ -47,12 +47,16 @@ function init()
 // Add an "email me when someone adds a shout to my profile" checkbox to the settings page.
 function addShoutsSettings(&$settings)
 {
-	global $language;
-	if (!isset($this->eso->user["emailOnNewShout"])) $_SESSION["emailOnNewShout"] = $this->eso->user["emailOnNewShout"] = 0;
+	global $language, $config;
+ 
+	if (empty($config["sendEmail"])) return;
+	$canEmail = ($settings->emailVerified == 1);
+ 
+	if (!isset($this->eso->user["emailOnNewShout"])) $_SESSION["user"]["emailOnNewShout"] = $this->eso->user["emailOnNewShout"] = 0;
 	$settings->addToForm("settingsOther", array(
 		"id" => "emailOnNewShout",
-		"html" => "<label for='emailOnNewShout' class='checkbox'>{$language["emailOnNewShout"]}</label> <input id='emailOnNewShout' type='checkbox' class='checkbox' name='emailOnNewShout' value='1' " . ($this->eso->user["emailOnNewShout"] ? "checked='checked' " : "") . "/>",
-		"databaseField" => "emailOnNewShout",
+		"html" => "<label for='emailOnNewShout' class='checkbox'>{$language["emailOnNewShout"]}</label> <input id='emailOnNewShout' type='checkbox' class='checkbox' name='emailOnNewShout' value='1' " . ($this->eso->user["emailOnNewShout"] ? "checked='checked' " : "") . ($canEmail ? "" : "disabled") . "/>",
+		"databaseField" => $canEmail ? "emailOnNewShout" : false,
 		"checkbox" => true,
 		"required" => true
 	), 400);
@@ -61,7 +65,7 @@ function addShoutsSettings(&$settings)
 // Add the shouts section to the profile view.
 function addShoutsSection(&$controller)
 {
-	global $language;
+	global $language, $config;
 	$this->member =& $controller->member;
  
 	// Do we need to add or delete a shout?
@@ -98,7 +102,10 @@ makePlaceholder(getById(\"shoutContent\"), \"{$language["Type a shout here"]}\")
 	$section .= "</div>";
  
 	// Initialize the shout javascript.
-	if ($this->eso->user) $section .= "<script type='text/javascript'>// <![CDATA[
+	$this->eso->addVarToJS("autoReloadIntervalStart", $config["autoReloadIntervalStart"]);
+	$this->eso->addVarToJS("autoReloadIntervalMultiplier", $config["autoReloadIntervalMultiplier"]);
+	$this->eso->addVarToJS("autoReloadIntervalLimit", $config["autoReloadIntervalLimit"]);
+	$section .= "<script type='text/javascript'>// <![CDATA[
 Shouts.member={$controller->member["memberId"]};Shouts.init();
 // ]]></script>";
  
@@ -134,6 +141,16 @@ function ajax(&$controller)
 		case "deleteShout":
 			if (!$this->eso->validateToken(@$_POST["token"])) return;
 			$this->deleteShout($_POST["shoutId"]);
+			break;
+ 
+		// Check for shouts added after the newest one on the page.
+		case "checkForNewShouts":
+			return $this->checkForNewShouts(@$_POST["memberTo"], @$_POST["after"], @$_POST["from"]);
+ 
+		// Get the new shouts.
+		case "getNewShouts":
+			$this->member = array("memberId" => (int)@$_POST["memberTo"]);
+			return $this->getNewShouts($this->member["memberId"], @$_POST["after"]);
 	}
 }
  
@@ -151,6 +168,44 @@ function getShouts($memberId, $limit = 50)
  
 	// Put the results into an array.
 	for ($i = 0; $i < $limit and $shout = $this->eso->db->fetchAssoc($result); $i++) $shouts[] = $shout;
+	return $shouts;
+}
+ 
+// Check for shouts added after shout $after, and get the times of the shouts from $from to $after
+// that still exist.
+function checkForNewShouts($memberId, $after, $from)
+{
+	global $config;
+ 
+	$memberId = (int)$memberId;
+	$after = (int)$after;
+	$from = (int)$from;
+ 
+	$newShouts = (bool)$this->eso->db->result("SELECT 1 FROM {$config["tablePrefix"]}shouts WHERE memberTo=$memberId AND shoutId>$after LIMIT 1", 0);
+ 
+	$times = array();
+	if ($from <= $after) {
+		$result = $this->eso->db->query("SELECT shoutId, time FROM {$config["tablePrefix"]}shouts WHERE memberTo=$memberId AND shoutId BETWEEN $from AND $after");
+		while (list($shoutId, $time) = $this->eso->db->fetchRow($result)) $times[$shoutId] = relativeTime($time);
+	}
+ 
+	return array("newShouts" => $newShouts, "times" => $times);
+}
+ 
+// Fetch shouts that were added after shout $after, with their HTML.
+function getNewShouts($memberId, $after)
+{
+	global $config;
+ 
+	$memberId = (int)$memberId;
+	$after = (int)$after;
+ 
+	$rows = array();
+	$result = $this->eso->db->query("SELECT shoutId, memberFrom, name, color, avatarFormat, time, content FROM {$config["tablePrefix"]}shouts LEFT JOIN {$config["tablePrefix"]}members ON (memberId=memberFrom) WHERE memberTo=$memberId AND shoutId>$after ORDER BY shoutId DESC LIMIT {$this->limit}");
+	while ($shout = $this->eso->db->fetchAssoc($result)) array_unshift($rows, $shout);
+ 
+	$shouts = array();
+	foreach ($rows as $shout) $shouts[] = array("id" => $shout["shoutId"], "html" => $this->htmlShout($shout));
 	return $shouts;
 }
  
@@ -198,10 +253,14 @@ function addShout($content)
  
 	// Notify the member via email.
 	global $versions;
-	if ($shout["memberTo"] != $shout["memberFrom"]) {
-		list($emailOnNewShout, $email, $name, $language) = $this->eso->db->fetchRow("SELECT emailOnNewShout, email, name, language FROM {$config["tablePrefix"]}members WHERE memberId={$shout["memberTo"]}");
-		include "languages/" . sanitizeFileName(file_exists("languages/$language.php") ? $language : $config["language"]) . ".php";
-		if ($emailOnNewShout) sendEmail($email, sprintf($language["emails"]["newShout"]["subject"], $name), sprintf($language["emails"]["newShout"]["body"], $name, $this->eso->user["name"], $config["baseURL"] . makeLink("profile", $shout["memberTo"])));
+	if (!empty($config["sendEmail"]) and $shout["memberTo"] != $shout["memberFrom"]) {
+		list($emailOnNewShout, $email, $name, $language) = $this->eso->db->fetchRow("SELECT emailOnNewShout, email, name, language FROM {$config["tablePrefix"]}members WHERE memberId={$shout["memberTo"]} AND emailVerified=1");
+		if ($emailOnNewShout) {
+			$text = $GLOBALS["language"]["emails"]["newShout"];
+			include "languages/" . sanitizeFileName(file_exists("languages/$language.php") ? $language : $config["language"]) . ".php";
+			if (isset($language["emails"]["newShout"])) $text = $language["emails"]["newShout"];
+			sendEmail($email, sprintf($text["subject"], $name), sprintf($text["body"], $name, $this->eso->user["name"], $config["baseURL"] . makeLink("profile", $shout["memberTo"])));
+		}
 		unset($langauge, $messages);
 	}
  
@@ -252,16 +311,20 @@ function upgrade($oldVersion)
 		$this->eso->db->query("ALTER TABLE {$config["tablePrefix"]}members ADD COLUMN emailOnNewShout tinyint(1) NOT NULL default '0'");
 	}
  
-	if (!$oldVersion) {
-		if ($this->eso->db->numRows("SHOW TABLES LIKE '{$config["tablePrefix"]}shouts'")) return;
+	if (!$this->eso->db->numRows("SHOW TABLES LIKE '{$config["tablePrefix"]}shouts'")) {
 		$this->eso->db->query("CREATE TABLE {$config["tablePrefix"]}shouts (
 			shoutId int unsigned NOT NULL auto_increment,
 			memberTo int unsigned NOT NULL,
 			memberFrom int unsigned NOT NULL,
 			time int unsigned NOT NULL,
 			content text NOT NULL,
-			PRIMARY KEY  (shoutId)
+			PRIMARY KEY  (shoutId),
+			KEY memberTo (memberTo, shoutId)
 		) ENGINE=MyISAM DEFAULT CHARSET=utf8");
+	}
+ 
+	if (!$this->eso->db->numRows("SHOW INDEX FROM {$config["tablePrefix"]}shouts WHERE Key_name='memberTo'")) {
+		$this->eso->db->query("ALTER TABLE {$config["tablePrefix"]}shouts ADD INDEX memberTo (memberTo, shoutId)");
 	}
  
 }
